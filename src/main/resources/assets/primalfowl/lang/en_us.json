@@ -1,0 +1,13 @@
+{
+  "itemGroup.primalfowl": "Example Mod Tab",
+  "block.primalfowl.example_block": "Example Block",
+  "item.primalfowl.example_item": "Example Item",
+
+  "primalfowl.configuration.title": "Primalfowl Configs",
+  "primalfowl.configuration.section.primalfowl.common.toml": "Primalfowl Configs",
+  "primalfowl.configuration.section.primalfowl.common.toml.title": "Primalfowl Configs",
+  "primalfowl.configuration.items": "Item List",
+  "primalfowl.configuration.logDirtBlock": "Log Dirt Block",
+  "primalfowl.configuration.magicNumberIntroduction": "Magic Number Text",
+  "primalfowl.configuration.magicNumber": "Magic Number"
+}
