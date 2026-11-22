@@ -1,0 +1,53 @@
+{
+  "entity.duck.plop": {
+    "sounds": [
+      "mob/chicken/plop"
+    ],
+    "subtitle": "subtitles.primalfowl.duck.plop"
+  },
+  "entity.goose.plop": {
+    "sounds": [
+      "mob/chicken/plop"
+    ],
+    "subtitle": "subtitles.primalfowl.goose.plop"
+  },
+  "entity.duck.idle": {
+    "sounds": [
+      "primalfowl:entity/duck/duck_idle1",
+      "primalfowl:entity/duck/duck_idle2",
+      "primalfowl:entity/duck/duck_idle3"
+    ],
+    "subtitle": "subtitles.primalfowl.entity.duck.idle"
+  },
+  "entity.duck.hurt": {
+    "sounds": [
+      "primalfowl:entity/duck/duck_hurt1",
+      "primalfowl:entity/duck/duck_hurt2"
+    ],
+    "subtitle": "subtitles.primalfowl.entity.duck.hurt"
+  },
+  "entity.duck.death": {
+    "sounds": [
+      "primalfowl:entity/duck/duck_death1"
+    ],
+    "subtitle": "subtitles.primalfowl.entity.duck.death"
+  },
+  "entity.goose.idle": {
+    "sounds": [
+      "primalfowl:entity/goose/goose_idle1"
+    ],
+    "subtitle": "subtitles.primalfowl.entity.goose.idle"
+  },
+  "entity.goose.hurt": {
+    "sounds": [
+      "primalfowl:entity/goose/goose_hurt1"
+    ],
+    "subtitle": "subtitles.primalfowl.entity.goose.hurt"
+  },
+  "entity.goose.death": {
+    "sounds": [
+      "primalfowl:entity/goose/goose_death1"
+    ],
+    "subtitle": "subtitles.primalfowl.entity.goose.death"
+  }
+}

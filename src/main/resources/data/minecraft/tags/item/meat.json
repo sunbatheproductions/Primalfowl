@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "primalfowl:raw_duck",
+    "primalfowl:cooked_duck",
+    "primalfowl:raw_goose",
+    "primalfowl:cooked_goose"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "values": [
+    "minecraft:player",
+    "minecraft:villager",
+    "minecraft:wandering_trader",
+    "#minecraft:illager",
+    "minecraft:fox",
+    {
+      "id": "primal:snake",
+      "required": false
+    }
+  ]
+}

@@ -2,7 +2,9 @@
   "required": true,
   "package": "org.primalfowl.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [],
+  "mixins": [
+    "FoxMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   },
