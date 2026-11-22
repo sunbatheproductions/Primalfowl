@@ -92,7 +92,6 @@ public class Primalfowl_MemoryModuleTypes {
     public static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<LivingEntity>> NEAREST_PLAY_MOB =
             Primalfowl_Registries.MEMORY_MODULE_TYPES.register("nearest_play_mob", () -> new MemoryModuleType<>(Optional.empty()));
 
-
     //Note: Need codec to being able to store it inside the nbt
     public static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<List<UUID>>> ATTACKED_LIST =
             Primalfowl_Registries.MEMORY_MODULE_TYPES.register("mobs_attacked", () -> new MemoryModuleType<>(Optional.of(Codec.list(UUIDUtil.CODEC))));

@@ -32,24 +32,14 @@ public class Primalfowl_Config {
     public final ModConfigSpec.IntValue gooseGroupMaxGroup;
     public final ModConfigSpec.ConfigValue<List<? extends String>> gooseGroupExtraBiomes;
 
-    // --- Swan ---
-    public final ModConfigSpec.BooleanValue enableSwanSingleSpawn;
-    public final ModConfigSpec.IntValue swanSingleSpawnWeight;
-    public final ModConfigSpec.IntValue swanSingleMinGroup;
-    public final ModConfigSpec.IntValue swanSingleMaxGroup;
-    public final ModConfigSpec.ConfigValue<List<? extends String>> swanSingleExtraBiomes;
-
-    public final ModConfigSpec.BooleanValue enableSwanGroupSpawn;
-    public final ModConfigSpec.IntValue swanGroupSpawnWeight;
-    public final ModConfigSpec.IntValue swanGroupMinGroup;
-    public final ModConfigSpec.IntValue swanGroupMaxGroup;
-    public final ModConfigSpec.ConfigValue<List<? extends String>> swanGroupExtraBiomes;
+    public final ModConfigSpec.BooleanValue duckBabyCustomModel;
+    public final ModConfigSpec.BooleanValue gooseBabyCustomModel;
 
     @SuppressWarnings("deprecation")
     public Primalfowl_Config(ModConfigSpec.Builder builder) {
 
         // --- Duck ---
-        builder.push("crocodile");
+        builder.push("duck");
         {
             builder.push("normal");
             {
@@ -194,76 +184,17 @@ public class Primalfowl_Config {
         }
         builder.pop();
 
-        // --- Swan ---
-        builder.push("swan");
+        // --- Misc Changes ---
+        builder.push("misc");
+
+        builder.push("babyCustomModels");
         {
-            builder.push("single");
-            {
-                builder.comment("""
-                            Enable or disable swan single spawning
-                            Default=true""");
-                enableSwanSingleSpawn = builder.define("enableSwanSingleSpawn", true);
-
-                builder.comment("""
-                            Spawn weight for single swan (higher = more common)
-                            Default=15""");
-                swanSingleSpawnWeight = builder.defineInRange("swanSingleSpawnWeight", 8, 1, Integer.MAX_VALUE);
-
-                builder.comment("""
-                            Minimum group size for single swan, it MUST be lesser than max group size
-                            Default=1""");
-                swanSingleMinGroup = builder.defineInRange("swanSingleMinGroup", 1, 1, Integer.MAX_VALUE);
-
-                builder.comment("""
-                            Maximum group size for single swan, it MUST be greater than min group size
-                            Default=1""");
-                swanSingleMaxGroup = builder.defineInRange("swanSingleMaxGroup", 1, 1, Integer.MAX_VALUE);
-
-                builder.comment("""
-                            Extra biomes (separated from biome tag) where single swan can spawn.
-                            Must be written as full biome IDs (e.g. "minecraft:plains", "nomansland:maple_forest")
-                            You can use biome tags too, just put a # before (e.g. "#minecraft:is_forest", "#nomansland:is_river")
-                            Default = []""");
-                swanSingleExtraBiomes = builder.defineList("swanSingleExtraBiomes",
-                        List.of(),
-                        o -> o instanceof String s && s.contains(":")
-                );
-            }
-            builder.pop();
-
-            builder.push("group");
-            {
-                builder.comment("""
-                            Enable or disable swan group spawning (with babies)
-                            Default=true""");
-                enableSwanGroupSpawn = builder.define("enableSwanGroupSpawn", true);
-
-                builder.comment("""
-                            Spawn weight for swan groups (higher = more common)
-                            Default=5""");
-                swanGroupSpawnWeight = builder.defineInRange("swanGroupSpawnWeight", 4, 1, Integer.MAX_VALUE);
-
-                builder.comment("""
-                            Minimum group size for swan groups, it MUST be lesser than max group size
-                            Default=2""");
-                swanGroupMinGroup = builder.defineInRange("swanGroupMinGroup", 2, 1, Integer.MAX_VALUE);
-
-                builder.comment("""
-                            Maximum group size for swan groups, it MUST be greater than min group size
-                            Default=2""");
-                swanGroupMaxGroup = builder.defineInRange("swanGroupMaxGroup", 2, 1, Integer.MAX_VALUE);
-
-                builder.comment("""
-                            Extra biomes (separated from biome tag) where swan groups can spawn.
-                            Must be written as full biome IDs (e.g. "minecraft:plains", "nomansland:maple_forest")
-                            You can use biome tags too, just put a # before (e.g. "#minecraft:is_forest", "#nomansland:is_river")
-                            Default = []""");
-                swanGroupExtraBiomes = builder.defineList("swanGroupExtraBiomes",
-                        List.of(),
-                        o -> o instanceof String s && s.contains(":")
-                );
-            }
-            builder.pop();
+            builder.comment("""
+                            If for some reason you don't want the cute babies custom models, you can disable them here, and they will use the adult model with a big head.
+                            You need to restart the game after changing these options.
+                            Default for all=true""");
+            duckBabyCustomModel = builder.define("duckBabyCustomModel", true);
+            gooseBabyCustomModel = builder.define("gooseBabyCustomModel", true);
         }
         builder.pop();
     }

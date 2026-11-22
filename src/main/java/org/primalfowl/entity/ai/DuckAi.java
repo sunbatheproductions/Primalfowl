@@ -1,22 +1,21 @@
 package org.primalfowl.entity.ai;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.TimeUtil;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.*;
 import net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.ItemStack;
-import org.apache.commons.lang3.tuple.Pair;
 import org.primal.entity.ai.behavior.generic.*;
 import org.primal.util.Primal_Util;
 import org.primalfowl.entity.animal.DuckEntity;
@@ -30,12 +29,14 @@ import java.util.function.Predicate;
 @SuppressWarnings("deprecation")
 public class DuckAi {
 
+    private static final Predicate<DuckEntity> CAN_MOVE = duck -> !duck.refuseToMove();
+    private static final Predicate<DuckEntity> IS_ADULT_DUCK = duck -> !duck.isBaby();
+
     //──────────────────────────────────── Init ────────────────────────────────────
     private static final ImmutableList<SensorType<? extends Sensor<? super DuckEntity>>> SENSOR_TYPES = ImmutableList.of(
             SensorType.HURT_BY,
             Primalfowl_Sensors.NEAREST_BABY.get(),
             Primalfowl_Sensors.DUCK_TEMPTATIONS_SENSOR.get(),
-            (SensorType<? extends Sensor<? super DuckEntity>>) Primalfowl_Sensors.DUCK_ENTITY_SENSOR.get(),
             SensorType.NEAREST_PLAYERS,
             SensorType.NEAREST_ADULT,
             SensorType.NEAREST_ITEMS);
@@ -124,7 +125,7 @@ public class DuckAi {
                 Activity.CORE,
                 0,
                 ImmutableList.of(
-                        new Swim(0.8F),
+                        new Swim(0.85F),
                         new LookAtTargetSink(45, 90),
                         new MoveToTargetSink(),
                         TryFindWaterSurface.create(32, 1, 0.10f)
@@ -132,7 +133,8 @@ public class DuckAi {
         );
     }
 
-    private static final UniformInt ADULT_FOLLOW_RANGE = UniformInt.of(2, 19);
+    private static final UniformInt ADULT_FOLLOW_RANGE = UniformInt.of(2, 12);
+
     private static void initIdleActivity(Brain<DuckEntity> brain) {
         brain.addActivity(
                 Activity.IDLE,
@@ -141,16 +143,25 @@ public class DuckAi {
                         new AnimalMakeLove(Primalfowl_Entities.DUCK.get()),
                         new RunOne<>(
                                 ImmutableList.of(
-                                        Pair.of(new FollowTemptation(livingEntity -> 1.0F, livingEntity -> livingEntity.isBaby() ? 2.5 : 3.5), 4),
-                                        Pair.of(BehaviorBuilder.triggerIf(Predicate.not(DuckEntity::refuseToMove),
-                                                BabyFollowAdult.create(ADULT_FOLLOW_RANGE, 1.0F)), 1)
+                                        Pair.of(new FollowTemptation(livingEntity -> 1.1F, livingEntity -> livingEntity.isBaby() ? 2.5 : 3.5), 4),
+                                        Pair.of(
+                                                BehaviorBuilder.triggerIf(
+                                                        CAN_MOVE,
+                                                        BabyFollowAdult.create(ADULT_FOLLOW_RANGE, 1.15F)
+                                                ),
+                                                3
+                                        )
                                 )
                         ),
                         SetEntityLookTargetSometimes.create(EntityType.PLAYER, 6.0F, UniformInt.of(30, 60)),
-                        SetWalkTargetFromPackMemberSometimes.create(
-                                1f, 12, 3,
-                                UniformInt.of(Primal_Util.toTicks(5), Primal_Util.toTicks(20)),
-                                Predicate.not(DuckEntity::isBaby)),
+                        BehaviorBuilder.triggerIf(
+                                CAN_MOVE,
+                                (OneShot<? super DuckEntity>) SetWalkTargetFromPackMemberSometimes.create(
+                                        1.0F, 10, 2,
+                                        UniformInt.of(Primal_Util.toTicks(3), Primal_Util.toTicks(10)),
+                                        IS_ADULT_DUCK
+                                )
+                        ),
                         createIdleBehaviors()
                 )
         );
@@ -159,30 +170,28 @@ public class DuckAi {
     private static RunOne<DuckEntity> createIdleBehaviors() {
         return new RunOne<>(
                 ImmutableList.of(
-                        Pair.of(new GateBehavior<>(
-                                        ImmutableMap.of(MemoryModuleType.WALK_TARGET, MemoryStatus.VALUE_ABSENT),
-                                        ImmutableSet.of(),
-                                        GateBehavior.OrderPolicy.ORDERED,
-                                        GateBehavior.RunningPolicy.TRY_ALL
-                                        ),
-                                3),
-                        Pair.of(BehaviorBuilder.triggerIf(Predicate.not(DuckEntity::refuseToMove), RandomStroll.stroll(0.9F)), 5),
-                        Pair.of(new RandomLookAround(UniformInt.of(150, 250), 30.0F, 0.0F, 0.0F),
-                                3),
-                        Pair.of(new DoNothing(40, 80),
-                                1)
+                        Pair.of(
+                                BehaviorBuilder.<DuckEntity>triggerIf(
+                                        CAN_MOVE,
+                                        RandomStroll.stroll(1.0F)
+                                ),
+                                6
+                        ),
+                        Pair.of(new RandomLookAround(UniformInt.of(100, 180), 30.0F, 0.0F, 0.0F), 2),
+                        Pair.of(new DoNothing(20, 40), 1)
                 )
         );
     }
 
     public static final UniformInt RETREAT_DURATION = TimeUtil.rangeOfSeconds(15, 30);
+
     private static void initRetreatActivity(Brain<DuckEntity> brain) {
         brain.addActivityAndRemoveMemoryWhenStopped(
                 Activity.AVOID,
                 10,
                 ImmutableList.of(
                         SetWalkTargetAwayFrom.entity(MemoryModuleType.AVOID_TARGET, 1.3F, 30, false),
-                        RandomStroll.stroll(0.9F),
+                        RandomStroll.stroll(1.0F),
                         new RandomLookAround(UniformInt.of(150, 250), 30.0F, 0.0F, 0.0F)
                 ),
                 MemoryModuleType.AVOID_TARGET
@@ -190,21 +199,34 @@ public class DuckAi {
     }
 
     private static void initCautiousActivity(Brain<DuckEntity> brain) {
-        brain.addActivityAndRemoveMemoryWhenStopped(Primalfowl_Activities.CAUTIOUS.get(), 10,
+        brain.addActivityAndRemoveMemoryWhenStopped(
+                Primalfowl_Activities.CAUTIOUS.get(),
+                10,
                 ImmutableList.of(
                         SetLookTarget.fromCautiousTarget(),
-                        StopMoving.create()
+                        RandomStroll.stroll(0.75F)
                 ),
-                Primalfowl_MemoryModuleTypes.NEAREST_CAUTIOUS.get());
+                Primalfowl_MemoryModuleTypes.NEAREST_CAUTIOUS.get()
+        );
     }
 
     //──────────────────────────────────── Misc ────────────────────────────────────
-    public static void updateActivity(DuckEntity deer) {
-        Brain<DuckEntity> brain = deer.getBrain();
+    public static void updateActivity(DuckEntity duck) {
+        Brain<DuckEntity> brain = duck.getBrain();
 
-        if(deer.isBaby())
-            brain.setActiveActivityToFirstValid(ImmutableList.of(Primalfowl_Activities.ESCAPE.get(), Activity.AVOID, Activity.IDLE));
-        else
-            brain.setActiveActivityToFirstValid(ImmutableList.of(Primalfowl_Activities.ESCAPE.get(), Activity.AVOID, Primalfowl_Activities.CAUTIOUS.get(), Primalfowl_Activities.PLAY.get(), Activity.IDLE));
+        if (duck.isBaby()) {
+            brain.setActiveActivityToFirstValid(ImmutableList.of(
+                    Primalfowl_Activities.ESCAPE.get(),
+                    Activity.AVOID,
+                    Activity.IDLE
+            ));
+        } else {
+            brain.setActiveActivityToFirstValid(ImmutableList.of(
+                    Primalfowl_Activities.ESCAPE.get(),
+                    Activity.AVOID,
+                    Primalfowl_Activities.CAUTIOUS.get(),
+                    Activity.IDLE
+            ));
+        }
     }
 }

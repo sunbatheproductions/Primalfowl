@@ -11,6 +11,7 @@ public class Primalfowl_Activities {
     public static final DeferredHolder<Activity, Activity> FOLLOW = register("primalfowl_follow");
     public static final DeferredHolder<Activity, Activity> JOCKEY = register("primalfowl_jockey");
     public static final DeferredHolder<Activity, Activity> CAUTIOUS = register("primalfowl_cautious");
+    public static final DeferredHolder<Activity, Activity> ESCAPE = register("primalfowl_esacpe");
 
     public static void init() {}
 

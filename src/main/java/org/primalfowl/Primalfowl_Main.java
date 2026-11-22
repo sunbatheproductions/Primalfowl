@@ -13,14 +13,16 @@ import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
+import org.primalfowl.biome_modifiers.mobs.DuckNormal_BiomeModifier;
+import org.primalfowl.biome_modifiers.mobs.DuckSwamp_BiomeModifier;
+import org.primalfowl.biome_modifiers.mobs.GooseGroup_BiomeModifier;
+import org.primalfowl.biome_modifiers.mobs.GooseSingle_BiomeModifier;
 import org.primalfowl.entity.animal.DuckEntity;
-import org.primalfowl.registry.Primalfowl_Activities;
-import org.primalfowl.registry.Primalfowl_Entities;
-import org.primalfowl.registry.Primalfowl_MemoryModuleTypes;
-import org.primalfowl.registry.Primalfowl_Sensors;
+import org.primalfowl.entity.animal.GooseEntity;
+import org.primalfowl.registry.*;
 
 @SuppressWarnings("removal")
-@EventBusSubscriber(modid = Primalfowl_Main.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Primalfowl_Main.MOD_ID)
 @Mod(Primalfowl_Main.MOD_ID)
 public class Primalfowl_Main {
     public static final String MOD_ID = "primalfowl";
@@ -67,15 +69,12 @@ public class Primalfowl_Main {
             DuckSwamp_BiomeModifier.register();
             GooseSingle_BiomeModifier.register();
             GooseGroup_BiomeModifier.register();
-            SwanSingle_BiomeModifier.register();
-            SwanGroup_BiomeModifier.register();
     }
 
     @SubscribeEvent
         public static void registerAttribute (@NotNull EntityAttributeCreationEvent event){
             event.put(Primalfowl_Entities.DUCK.get(), DuckEntity.createAttributes().build());
             event.put(Primalfowl_Entities.GOOSE.get(), GooseEntity.createAttributes().build());
-            event.put(Primalfowl_Entities.SWAN.get(), SwanEntity.createAttributes().build());
         }
 
         @SubscribeEvent
@@ -85,10 +84,7 @@ public class Primalfowl_Main {
                     DuckEntity::checkDuckSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
             //Goose
             event.register(Primalfowl_Entities.GOOSE.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                    GooseEntity::checkWaterfowlSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
-            //Swan
-            event.register(Primalfowl_Entities.Swan.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                    SwanEntity::checkWaterfowlSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
+                    GooseEntity::checkGooseSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
         }
 }
 

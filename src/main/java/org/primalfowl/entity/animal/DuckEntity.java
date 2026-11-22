@@ -9,12 +9,15 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.ByIdMap;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.util.Unit;
 import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.Brain;
@@ -23,25 +26,35 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.pathfinder.PathType;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.primal.entity.ai.controls.look.WaterOrLandLookControl;
+import org.primal.entity.ai.controls.move.SnakeMoveControl;
+import org.primal.entity.ai.controls.move.WaterOrLandMoveControl;
 import org.primal.util.Primal_Util;
 import org.primal.util.mob_types.DetectsFartherAway;
 import org.primalfowl.entity.ai.DuckAi;
+import org.primalfowl.entity.ai.controls.navigation.DuckPathNavigation;
 import org.primalfowl.registry.Primalfowl_Entities;
+import org.primalfowl.registry.Primalfowl_Items;
+import org.primalfowl.registry.Primalfowl_Sounds;
 import org.primalfowl.registry.Primalfowl_Tags;
 
-import java.util.Random;
 import java.util.function.IntFunction;
 
-public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Variant> {
+public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Variant>, DetectsFartherAway {
+    public int eggTime = this.random.nextInt(6000) + 6000;
+
     //──────────────────────────────────── Variants ────────────────────────────────────
     public enum Variant implements StringRepresentable {
         PEKIN(0, "pekin"),
@@ -96,18 +109,16 @@ public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Varia
     //──────────────────────────────────── Init ────────────────────────────────────
     public DuckEntity(EntityType<DuckEntity> entityType, Level level) {
         super(entityType, level);
-        this.moveControl = new DuckMoveControl(this);
-        this.lookControl = new DuckLookControl(this);
-        this.setPathfindingMalus(PathType.DANGER_FIRE, -1.0F);
-        this.setPathfindingMalus(PathType.DAMAGE_FIRE, -1.0F);
-        this.setPathfindingMalus(PathType.WATER, 0.0F);
+        this.getNavigation().setCanFloat(true);
+        this.moveControl = new WaterOrLandMoveControl<>(this, 85, 50, 0.58f, 1.0f, false, duck -> !duck.refuseToMove());
+        this.lookControl = new WaterOrLandLookControl<>(this, 10);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 6f)
                 .add(Attributes.MOVEMENT_SPEED, 0.19f)
-                .add(Attributes.ATTACK_DAMAGE, 1.5f)
+                .add(Attributes.ATTACK_DAMAGE, 0.5f)
                 .add(Attributes.FOLLOW_RANGE, 48.0F);
     }
 
@@ -150,9 +161,17 @@ public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Varia
     protected void customServerAiStep() {
         super.customServerAiStep();
 
+        Brain<DuckEntity> brain = this.getBrain();
+        brain.tick((ServerLevel) this.level(), this);
         DuckAi.updateActivity(this);
 
-        this.duckAiStep();
+        if (!this.level().isClientSide && this.isAlive() && !this.isBaby() && --this.eggTime <= 0) {
+            this.playSound(Primalfowl_Sounds.DUCK_PLOP.get(), 1.0F, (this.random.nextFloat() - this.random.nextFloat()) * 0.2F + 1.0F);
+            this.spawnAtLocation(Primalfowl_Items.DUCK_EGG.get());
+            this.gameEvent(GameEvent.ENTITY_PLACE);
+            this.eggTime = this.random.nextInt(6000) + 6000;
+        }
+
     }
 
     @Override
@@ -162,7 +181,7 @@ public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Varia
 
     @Override
     public void setSpeed(float speed) {
-        this.speed = speed;
+        super.setSpeed(speed);
         this.setZza(speed);
     }
 
@@ -177,20 +196,107 @@ public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Varia
     }
 
     @Override
+    public void aiStep() {
+        super.aiStep();
+        this.floatOnWater();
+    }
+
+    /**
+     * Keeps the duck buoyant near the water surface instead of sinking to the bottom.
+     */
+    protected void floatOnWater() {
+        if (this.isInWater()) {
+            double fluidHeight = this.getFluidHeight(FluidTags.WATER);
+            double submergeThreshold = this.getBbHeight() * 0.45D;
+
+            if (fluidHeight > submergeThreshold || this.isUnderWater()) {
+                Vec3 delta = this.getDeltaMovement();
+                double targetUpward = this.isUnderWater() ? 0.08D : 0.04D;
+                this.setDeltaMovement(delta.x, Math.max(delta.y, targetUpward), delta.z);
+                this.hasImpulse = true;
+            }
+        }
+    }
+
+    public boolean isSwimmingOnWater() {
+        return this.isInWaterOrBubble();
+    }
+
+    // ──────────────────────────────────── Feeding & Interaction ────────────────────────────────────
+    @Override
+    public @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand hand) {
+        ItemStack stackInHand = player.getItemInHand(hand);
+
+        if (this.isFood(stackInHand)) {
+            boolean wasFed = this.handleEating(player, stackInHand);
+            if (wasFed) {
+                if (!this.level().isClientSide) {
+                    this.usePlayerItem(player, hand, stackInHand);
+                }
+                return InteractionResult.sidedSuccess(this.level().isClientSide);
+            }
+        }
+
+        return super.mobInteract(player, hand);
+    }
+
+    public boolean handleEating(@NotNull Player player, @NotNull ItemStack stack) {
+        if (!this.isFood(stack)) {
+            return false;
+        }
+
+        if (isMatingFood(stack) && this.getAge() == 0 && this.canFallInLove()) {
+            if (!this.level().isClientSide) {
+                this.setInLove(player);
+            }
+            return playEatingSound();
+        }
+
+        if (this.isBaby()) {
+            if (!this.level().isClientSide) {
+                int currentAge = this.getAge();
+                this.ageUp(getSpeedUpSecondsWhenFeeding(-currentAge), true);
+            }
+            return playEatingSound();
+        }
+
+        return false;
+    }
+
+    protected boolean playEatingSound() {
+        if (!this.level().isClientSide) {
+            this.level().playSound(
+                    null,
+                    this,
+                    SoundEvents.GENERIC_EAT,
+                    this.getSoundSource(),
+                    1.0F,
+                    (this.random.nextFloat() - this.random.nextFloat()) * 0.2F + 1.0F
+            );
+        }
+        return true;
+    }
+
+    @Override
+    public boolean canFallInLove() {
+        return super.canFallInLove() && !this.getBrain().hasMemoryValue(MemoryModuleType.IS_PREGNANT);
+    }
+
+    @Override
     public boolean isFood(@NotNull ItemStack stack) {
         return isMatingFood(stack);
     }
 
-    public static boolean isMatingFood(@NotNull ItemStack stack){
+    public static boolean isMatingFood(@NotNull ItemStack stack) {
         return stack.is(Primalfowl_Tags.Item.DUCK_BREED_FOOD);
     }
 
     @Override
     public @Nullable AgeableMob getBreedOffspring(@NotNull ServerLevel level, @NotNull AgeableMob otherParent) {
-        if(otherParent instanceof DuckEntity otherParentCasted)
+        if (otherParent instanceof DuckEntity otherParentCasted)
             return Primal_Util.createFromParents(Primalfowl_Entities.DUCK.get(),
                     this,
-                    otherParentCasted, c-> DuckAi.initMemories(c, level.getRandom()));
+                    otherParentCasted, c -> DuckAi.initMemories(c, level.getRandom()));
 
         return null;
     }
@@ -217,27 +323,10 @@ public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Varia
         return Primalfowl_Sounds.DUCK_DEATH.get();
     }
 
-    public @Nullable SoundEvent getEatingSound() {
-        return Primalfowl_Sounds.EAGLE_EAT.get();
-    }
-
-    protected boolean playEatingSound(){
-        //Play the sound
-        if (!this.isSilent()) {
-            SoundEvent soundEvent = this.getEatingSound();
-            if (soundEvent != null) {
-                this.level()
-                        .playSound(
-                                null, this.getX(), this.getY(), this.getZ(), soundEvent, this.getSoundSource(), 1.0F, 1.0F + (this.random.nextFloat() - this.random.nextFloat()) * 0.2F
-                        );
-            }
-        }
-
-        return true;
-    }
-
     //──────────────────────────────────── Visuals ────────────────────────────────────
     public final AnimationState idleAnimationState = new AnimationState();
+
+    public final AnimationState swimAnimationState = new AnimationState();
 
     public final AnimationState flapAnimationState = new AnimationState();
 
@@ -250,7 +339,9 @@ public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Varia
     }
 
     private void setupAnimationStates() {
-        this.idleAnimationState.animateWhen(!this.isFlapping(), this.tickCount);
+        boolean swimming = this.isSwimmingOnWater() && !this.isFlapping();
+        this.swimAnimationState.animateWhen(swimming, this.tickCount);
+        this.idleAnimationState.animateWhen(!swimming && !this.isFlapping(), this.tickCount);
         this.flapAnimationState.animateWhen(this.isFlapping(), this.tickCount);
     }
 
@@ -279,7 +370,6 @@ public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Varia
                 for (int dy = -verticalDistance; dy <= verticalDistance; dy++) {
                     check.set(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
 
-                    // Only check if the chunk is actually loaded
                     if (level.isAreaLoaded(check, 1)) {
                         if (level.getFluidState(check).is(FluidTags.WATER)) {
                             return true;
@@ -293,10 +383,35 @@ public class DuckEntity extends Animal implements VariantHolder<DuckEntity.Varia
 
     @Override
     protected float getWaterSlowDown() {
-        return super.getWaterSlowDown();
+        return 0.96F;
     }
 
     public boolean refuseToMove() {
         return hasPose(Pose.SITTING);
+    }
+
+    @Override
+    public boolean canBeLeashed() {
+        return super.canBeLeashed() && !hasPose(Pose.SITTING);
+    }
+
+    @Override
+    public boolean isEntityTargetable(LivingEntity livingEntity, LivingEntity livingEntity1) {
+        return false;
+    }
+
+    @Override
+    public boolean isEntityAttackable(LivingEntity livingEntity, LivingEntity livingEntity1) {
+        return false;
+    }
+
+    @Override
+    protected @NotNull Vec3 getLeashOffset() {
+        return new Vec3(0.0, this.getEyeHeight() * 0.6f, this.getBbWidth() * 0.2F);
+    }
+
+    @Override
+    public float getScale() {
+        return this.isBaby() ? 0.5f : 1.0f;
     }
 }
